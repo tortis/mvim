@@ -2,6 +2,8 @@
 
 A VIM-like editor for ComputerCraft (CC: Tweaked)
 
+See [TODO.md](./TODO.md) for implemented and missing features.
+
 ## Local development
 
 Dependencies:
