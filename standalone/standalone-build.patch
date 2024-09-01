@@ -1,0 +1,42 @@
+diff --git a/projects/standalone/build.gradle.kts b/projects/standalone/build.gradle.kts
+index d1bde4846..4d11daf34 100644
+--- a/projects/standalone/build.gradle.kts
++++ b/projects/standalone/build.gradle.kts
+@@ -51,3 +51,24 @@
+     workingDir = rootProject.projectDir
+     args = listOf("-r", project(":core").layout.projectDirectory.dir("src/main/resources").asFile.absolutePath)
+ }
++
++// Add the buildStandalone task
++tasks.register<Jar>("buildStandalone") {
++    group = "Build"
++    description = "Assembles a standalone JAR with all dependencies."
++
++    archiveClassifier.set("standalone")
++
++    manifest {
++        attributes["Main-Class"] = "cc.tweaked.standalone.Main"
++    }
++
++    from(sourceSets.main.get().output)
++
++    dependsOn(configurations.runtimeClasspath)
++    from({
++        configurations.runtimeClasspath.get().filter { it.exists() }.map { if (it.isDirectory) it else zipTree(it) }
++    })
++
++    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
++}
+diff --git a/projects/standalone/src/main/java/cc/tweaked/standalone/Main.java b/projects/standalone/src/main/java/cc/tweaked/standalone/Main.java
+index 35411959f..41740ed53 100644
+--- a/projects/standalone/src/main/java/cc/tweaked/standalone/Main.java
++++ b/projects/standalone/src/main/java/cc/tweaked/standalone/Main.java
+@@ -226,7 +226,7 @@ public void startup() {
+         }
+     }
+ 
+-    private static final int SCALE = 2;
++    private static final int SCALE = 4;
+     private static final int MARGIN = 2;
+     private static final int PIXEL_WIDTH = 6;
+     private static final int PIXEL_HEIGHT = 9;
