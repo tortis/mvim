@@ -23,6 +23,8 @@
 - [ ] a/i(
 - [ ] a/i[
 - [ ] a/i{
+- [ ] f/F
+- [ ] t/T
 
 ## Insert Mode
 
@@ -35,3 +37,8 @@
 - [ ] d
 - [ ] c
 - [ ] V (line)
+
+## Misc
+
+- [x] shell completion
+- [ ] Create a datapack (https://github.com/cc-tweaked/datapack-example/tree/dev)
