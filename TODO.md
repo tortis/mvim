@@ -25,6 +25,7 @@
 - [ ] a/i{
 - [ ] f/F
 - [ ] t/T
+- [ ] u/ctrl-R
 
 ## Insert Mode
 
@@ -42,3 +43,4 @@
 
 - [x] shell completion
 - [ ] Create a datapack (https://github.com/cc-tweaked/datapack-example/tree/dev)
+- [ ] render tabs as a set number of spaces

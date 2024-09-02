@@ -132,7 +132,15 @@ function Buffer:renderCursor(term)
 end
 
 function Buffer:renderLine(term, line)
-
+	if line < self.scrollPos then
+		return
+	end
+	if line > self.scrollPos + State.bufHeight then
+		return
+	end
+	term.setCursorPos(1, line - self.scrollPos)
+	term.clearLine()
+	term.write(self.lines[line])
 end
 
 function Buffer:renderSpan(term, start, finish)
@@ -274,16 +282,26 @@ local function handleKeyNormalMode(key)
 	end
 end
 
+local function isTypeableKey(key)
+	return key >= 32 and key <= 126
+end
+
 local function handleKeyInsertMode(key)
 	if key == Keys.c and State.ctrl then
 		enterNormalMode()
 	elseif key == Keys.l_brack and State.ctrl then
 		enterNormalMode()
+	elseif isTypeableKey(key) then
+		local b = ab()
+		local line = b.lines[b.cursorPos.y]
+		b.lines[b.cursorPos.y] = line:sub(1, b.cursorPos.x - 1) .. keys.getName(key) .. line:sub(b.cursorPos.x)
+		b.cursorPos.x = b.cursorPos.x + 1
+		b:renderLine(term, b.cursorPos.y)
+		b:renderCursor(term)
 	end
-end
-
-local function isTypeableKey(key)
-	return key >= 32 and key <= 126
+	-- TODO: Handle new lines
+	-- TODO: Handle backspace
+	-- TODO: Handle delete
 end
 
 local function evalCommand()
