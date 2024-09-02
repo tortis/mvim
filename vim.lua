@@ -142,7 +142,7 @@ function Buffer:renderLine(term, line)
 	if line > self.scrollPos + State.bufHeight then
 		return
 	end
-	term.setCursorPos(1, line - self.scrollPos)
+	term.setCursorPos(1, line - (self.scrollPos -1))
 	term.clearLine()
 	term.write(self.lines[line])
 end
