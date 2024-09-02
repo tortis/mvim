@@ -86,8 +86,10 @@ function Buffer:down(n)
 		self.cursorPos.y = self.cursorPos.y + n
 		if self.cursorPos.y >= self.scrollPos + State.height - 1 then
 			self.scrollPos = self.scrollPos + n
+			return true
 		end
 	end
+	return false
 end
 
 function Buffer:up(n)
@@ -95,8 +97,10 @@ function Buffer:up(n)
 		self.cursorPos.y = self.cursorPos.y - n
 		if self.cursorPos.y < self.scrollPos then
 			self.scrollPos = self.cursorPos.y
+			return true
 		end
 	end
+	return false
 end
 
 function Buffer:left(n)
@@ -251,13 +255,15 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys.g then
 			State.g = true
 		elseif key == Keys.j then
-			b:down(1)
-			b:renderFull(term)
+			if b:down(1) then
+				b:renderFull(term)
+			end
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys.k then
-			b:up(1)
-			b:renderFull(term)
+			if b:up(1) then
+				b:renderFull(term)
+			end
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys.h then
