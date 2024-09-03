@@ -12,6 +12,9 @@ State = {
 
 Keys = {
 	semicolon = 59,
+	_0 = 48,
+	_4 = 52,
+	_6 = 54,
 	a = 65,
 	c = 67,
 	i = 73,
@@ -288,6 +291,27 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys.d and State.ctrl then
 			b:scroll(math.floor(State.height / 2))
 			b:renderFull(term)
+			renderStatus()
+			b:renderCursor(term)
+		elseif key == Keys._0 then
+			b.x = 1
+			renderStatus()
+			b:renderCursor(term)
+		elseif key == Keys._4 and State.shifted then -- $
+			b.x = #b.lines[b.y]
+			renderStatus()
+			b:renderCursor(term)
+		elseif key == Keys._6 and State.shifted then -- ^
+			local line = b.lines[b.y]
+			local i = 1
+			while i < #line do
+				local c = line:sub(i, i)
+				if c ~= " " and c ~= "\t" then
+					break
+				end
+				i = i + 1
+			end
+			b.x = i
 			renderStatus()
 			b:renderCursor(term)
 		end
