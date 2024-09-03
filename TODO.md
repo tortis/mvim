@@ -29,7 +29,7 @@
 
 ## Insert Mode
 
-- [ ] basic text insertion
+- [x] basic text insertion
 - [ ] arrow key cursor movement
 
 ## Visual Mode

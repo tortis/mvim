@@ -54,7 +54,12 @@ function Buffer:new(path)
 		end
 	end
 
-	b.cursorPos = { x = 1, y = 1 }
+	if #b.lines == 0 then
+		b.lines = { "" }
+	end
+
+	b.x = 1
+	b.y = 1
 	b.scrollPos = 1
 	b.mode = "normal"
 	b.search = nil
@@ -73,18 +78,18 @@ function Buffer:scroll(n)
 		self.scrollPos = 1
 	end
 
-	self.cursorPos.y = self.cursorPos.y + n
-	if self.cursorPos.y < 1 then
-		self.cursorPos.y = 1
-	elseif self.cursorPos.y > #self.lines then
-		self.cursorPos.y = #self.lines
+	self.y = self.y + n
+	if self.y < 1 then
+		self.y = 1
+	elseif self.y > #self.lines then
+		self.y = #self.lines
 	end
 end
 
 function Buffer:down(n)
-	if self.cursorPos.y + n <= #self.lines then
-		self.cursorPos.y = self.cursorPos.y + n
-		if self.cursorPos.y >= self.scrollPos + State.height - 1 then
+	if self.y + n <= #self.lines then
+		self.y = self.y + n
+		if self.y >= self.scrollPos + State.height - 1 then
 			self.scrollPos = self.scrollPos + n
 			return true
 		end
@@ -93,10 +98,10 @@ function Buffer:down(n)
 end
 
 function Buffer:up(n)
-	if self.cursorPos.y - n >= 1 then
-		self.cursorPos.y = self.cursorPos.y - n
-		if self.cursorPos.y < self.scrollPos then
-			self.scrollPos = self.cursorPos.y
+	if self.y - n >= 1 then
+		self.y = self.y - n
+		if self.y < self.scrollPos then
+			self.scrollPos = self.y
 			return true
 		end
 	end
@@ -104,17 +109,17 @@ function Buffer:up(n)
 end
 
 function Buffer:left(n)
-	self.cursorPos.x = self.cursorPos.x - n
-	if self.cursorPos.x < 1 then
-		self.cursorPos.x = 1
+	self.x = self.x - n
+	if self.x < 1 then
+		self.x = 1
 	end
 end
 
 function Buffer:right(n)
-	self.cursorPos.x = self.cursorPos.x + n
-	local line = self.lines[self.cursorPos.y]
-	if self.cursorPos.x > line:len() then
-		self.cursorPos.x = line:len()
+	self.x = self.x + n
+	local line = self.lines[self.y]
+	if self.x > line:len() then
+		self.x = line:len()
 	end
 end
 
@@ -131,8 +136,8 @@ function Buffer:renderFull(term)
 end
 
 function Buffer:renderCursor(term)
-	local screenY = self.cursorPos.y - (self.scrollPos - 1)
-	term.setCursorPos(self.cursorPos.x, screenY)
+	local screenY = self.y - (self.scrollPos - 1)
+	term.setCursorPos(self.x, screenY)
 end
 
 function Buffer:renderLine(term, line)
@@ -142,7 +147,7 @@ function Buffer:renderLine(term, line)
 	if line > self.scrollPos + State.bufHeight then
 		return
 	end
-	term.setCursorPos(1, line - (self.scrollPos -1))
+	term.setCursorPos(1, line - (self.scrollPos - 1))
 	term.clearLine()
 	term.write(self.lines[line])
 end
@@ -181,7 +186,7 @@ local function renderStatus(text)
 	term.write(text or "")
 	if b.mode == "normal" then
 		term.setCursorPos(State.width - 20, State.height)
-		term.write(("%d,%d(%d) %dx%d(%d)"):format(b.cursorPos.y, b.cursorPos.x, b.scrollPos, State.width, State.height,
+		term.write(("%d,%d(%d) %dx%d(%d)"):format(b.y, b.x, b.scrollPos, State.width, State.height,
 			State.bufHeight))
 	end
 end
@@ -202,22 +207,26 @@ end
 local function enterNormalMode(msg)
 	local b = ab();
 	b.mode = "normal"
+	local lineLen = b.lines[b.y]:len()
+	if b.x > lineLen then
+		b.x = lineLen
+	end
 	renderStatus(msg)
-	term.setCursorPos(b.cursorPos.x, b.cursorPos.y)
+	term.setCursorPos(b.x, b.y)
 end
 
 local function enterInsertMode()
 	local b = ab();
 	b.mode = "insert"
 	renderStatus("")
-	term.setCursorPos(b.cursorPos.x, b.cursorPos.y)
+	term.setCursorPos(b.x, b.y)
 end
 
 local function handleKeyNormalModeG(key)
 	local b = ab()
 	if key == Keys.g then
 		b.scrollPos = 1
-		b.cursorPos.y = 1
+		b.y = 1
 		b:renderFull(term)
 		renderStatus()
 		b:renderCursor(term)
@@ -234,20 +243,17 @@ local function handleKeyNormalMode(key)
 			if State.shifted then
 				-- move to beginning of text
 			end
-			enterInsertMode()
+			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.a then
 			if State.shifted then
 				-- move to end of line
 			end
-			enterInsertMode()
+			b.x = b.x + 1
+			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.semicolon and State.shifted then
-			enterCommandMode()
-		elseif key == Keys.c and State.ctrl then
-			enterNormalMode()
-		elseif key == Keys.l_brack and State.ctrl then
-			enterNormalMode()
+			os.queueEvent("mvim_mode", "command")
 		elseif key == Keys.g and State.shifted then
-			b.cursorPos.y = #b.lines
+			b.y = #b.lines
 			b.scrollPos = #b.lines - State.bufHeight + 1
 			b:renderFull(term)
 			renderStatus()
@@ -288,24 +294,48 @@ local function handleKeyNormalMode(key)
 	end
 end
 
-local function isTypeableKey(key)
-	return key >= 32 and key <= 126
-end
-
 local function handleKeyInsertMode(key)
 	if key == Keys.c and State.ctrl then
-		enterNormalMode()
+		os.queueEvent("mvim_mode", "normal")
 	elseif key == Keys.l_brack and State.ctrl then
-		enterNormalMode()
-	elseif isTypeableKey(key) then
+		os.queueEvent("mvim_mode", "normal")
+	elseif key == Keys.enter then
 		local b = ab()
-		local line = b.lines[b.cursorPos.y]
-		b.lines[b.cursorPos.y] = line:sub(1, b.cursorPos.x - 1) .. keys.getName(key) .. line:sub(b.cursorPos.x)
-		b.cursorPos.x = b.cursorPos.x + 1
-		b:renderLine(term, b.cursorPos.y)
+		local line = b.lines[b.y]
+		local _, spaces = string.find(line, "^[ ]+")
+		if not spaces then
+			spaces = 0
+		end
+		b.lines[b.y] = string.sub(line, 1, b.x - 1)
+		table.insert(b.lines, b.y + 1, string.rep(' ', spaces) .. string.sub(line, b.x))
+		b.x = spaces + 1
+		b.y = b.y + 1
+		b:renderFull(term)
+		b:renderCursor(term)
+	elseif key == Keys.backspace then
+		local b = ab()
+		if b.x > 1 then
+			-- Remove character
+			local line = b.lines[b.y]
+			if b.x > 4 and string.sub(line, b.x - 4, b.x - 1) == "    " and not string.sub(line, 1, b.x - 1):find("%S") then
+				b.lines[b.y] = string.sub(line, 1, b.x - 5) .. string.sub(line, b.x)
+				b.x = b.x - 4
+			else
+				b.lines[b.y] = string.sub(line, 1, b.x - 2) .. string.sub(line, b.x)
+				b.x = b.x - 1
+			end
+			b:renderLine(term, b.y)
+		elseif b.y > 1 then
+			-- Remove newline
+			local prevLen = #b.lines[b.y - 1]
+			b.lines[b.y - 1] = b.lines[b.y - 1] .. b.lines[b.y]
+			table.remove(b.lines, b.y)
+			b.x = prevLen + 1
+			b.y = b.y - 1
+			b:renderFull(term)
+		end
 		b:renderCursor(term)
 	end
-	-- TODO: Handle new lines
 	-- TODO: Handle backspace
 	-- TODO: Handle delete
 end
@@ -314,23 +344,20 @@ local function evalCommand()
 	if State.command == "q" then
 		os.queueEvent("terminate")
 	else
-		enterNormalMode("Not an editor command: " .. State.command)
+		os.queueEvent("mvim_mode", "normal", "Not an editor command: " .. State.command)
 		State.command = ""
 	end
 end
 
 local function handleKeyCommandMode(key)
 	if key == Keys.c and State.ctrl then
-		enterNormalMode()
+		os.queueEvent("mvim_mode", "normal")
 	elseif key == Keys.l_brack and State.ctrl then
-		enterNormalMode()
+		os.queueEvent("mvim_mode", "normal")
 	elseif key == Keys.enter then
 		evalCommand()
 	elseif key == Keys.backspace then
 		State.command = State.command:sub(1, State.command:len() - 1)
-		renderStatus(State.command)
-	elseif isTypeableKey(key) then
-		State.command = State.command .. keys.getName(key) -- slow?
 		renderStatus(State.command)
 	end
 end
@@ -360,15 +387,39 @@ local function handleKeyUp(key)
 	end
 end
 
+local function handleChar(char)
+	local b = ab()
+	if b.mode == "command" then
+		State.command = State.command .. char
+		renderStatus(State.command)
+	elseif b.mode == "insert" then
+		local line = b.lines[b.y]
+		b.lines[b.y] = line:sub(1, b.x - 1) .. char .. line:sub(b.x)
+		b.x = b.x + 1
+		b:renderLine(term, b.y)
+		b:renderCursor(term)
+	end
+end
+
 local function eventLoop()
 	while true do
 		local event, p1, p2 = os.pullEventRaw()
 		if event == "key" then
 			handleKey(p1, p2)
+		elseif event == "char" then
+			handleChar(p1)
 		elseif event == "key_up" then
 			handleKeyUp(p1)
 		elseif event == "term_resize" then
 			updateTermSize()
+		elseif event == "mvim_mode" then
+			if p1 == "insert" then
+				enterInsertMode()
+			elseif p1 == "command" then
+				enterCommandMode()
+			elseif p1 == "normal" then
+				enterNormalMode(p2)
+			end
 		elseif event == "terminate" then
 			term.clear()
 			term.setCursorPos(1, 1)
