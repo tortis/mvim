@@ -25,6 +25,7 @@ Keys = {
 	h = 72,
 	l = 76,
 	u = 85,
+	w = 87,
 	g = 71,
 	d = 68,
 	l_brack = 91,
@@ -237,6 +238,26 @@ local function handleKeyNormalModeG(key)
 	State.g = false
 end
 
+local function isWhitespace(ch)
+	return ch == " " or ch == "\t" or ch == "\n"
+end
+
+local function isIdChar(ch)
+	local code = string.byte(ch)
+	if code >= 65 and code <= 90 then
+		-- uppercase
+		return true
+	end
+	if code >= 97 and code <= 122 then
+		-- lowercase
+		return true
+	end
+	if code == 95 then
+		-- underscore
+		return true
+	end
+end
+
 local function handleKeyNormalMode(key)
 	if State.g then
 		handleKeyNormalModeG(key)
@@ -291,6 +312,59 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys.d and State.ctrl then
 			b:scroll(math.floor(State.height / 2))
 			b:renderFull(term)
+			renderStatus()
+			b:renderCursor(term)
+		elseif key == Keys.w then
+			local x = b.x
+			local y = b.y
+			local l = b.lines[y]
+			local ch = l:sub(x, x)
+			local s
+			if isIdChar(ch) then
+				s = "eating_word"
+			elseif isWhitespace(ch) then
+				s = "eating_ws"
+			else
+				s = "eating_symbols"
+			end
+			while true do
+				if #l == 0 then
+					y = y + 1
+					break
+				end
+				ch = l:sub(x, x)
+				if s == "eating_ws" then
+					if not isWhitespace(ch) then
+						break
+					end
+				elseif s == "eating_word" then
+					if isWhitespace(ch) then
+						s = "eating_ws"
+					elseif not isIdChar(ch) then
+						break
+					end
+				else
+					if isWhitespace(ch) then
+						s = "eating_ws"
+					elseif isIdChar(ch) then
+						break
+					end
+				end
+
+				if x >= #l then
+					x = 1
+					y = y + 1
+					if y > #b.lines then
+						y = #b.lines
+						break
+					end
+					l = b.lines[y]
+				else
+					x = x + 1
+				end
+			end
+			b.x = x
+			b.y = y
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys._0 then
