@@ -44,5 +44,5 @@
 
 - [x] shell completion
 - [ ] Create a datapack (https://github.com/cc-tweaked/datapack-example/tree/dev)
-- [ ] track desired x separately from real x position
+- [x] track desired x separately from real x position
 - [ ] render tabs as a set number of spaces

@@ -64,6 +64,7 @@ function Buffer:new(path)
 
 	b.x = 1
 	b.y = 1
+	b.xt = 1
 	b.scrollPos = 1
 	b.mode = "normal"
 	b.search = nil
@@ -91,14 +92,16 @@ function Buffer:scroll(n)
 end
 
 function Buffer:down(n)
+	local didScroll = false
 	if self.y + n <= #self.lines then
 		self.y = self.y + n
 		if self.y >= self.scrollPos + State.height - 1 then
 			self.scrollPos = self.scrollPos + n
-			return true
+			didScroll = true
 		end
+		self.x = math.min(self.xt, #self.lines[self.y])
 	end
-	return false
+	return didScroll
 end
 
 function Buffer:up(n)
@@ -108,6 +111,7 @@ function Buffer:up(n)
 			self.scrollPos = self.y
 			return true
 		end
+		self.x = math.min(self.xt, #self.lines[self.y])
 	end
 	return false
 end
@@ -117,6 +121,7 @@ function Buffer:left(n)
 	if self.x < 1 then
 		self.x = 1
 	end
+	self.xt = self.x
 end
 
 function Buffer:right(n)
@@ -125,6 +130,7 @@ function Buffer:right(n)
 	if self.x > line:len() then
 		self.x = line:len()
 	end
+	self.xt = self.x
 end
 
 function Buffer:renderFull(term)
@@ -373,6 +379,7 @@ local function handleKeyNormalMode(key)
 			b:renderCursor(term)
 		elseif key == Keys._4 and State.shifted then -- $
 			b.x = #b.lines[b.y]
+			b.xt = 99999999
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys._6 and State.shifted then -- ^
