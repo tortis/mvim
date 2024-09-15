@@ -31,6 +31,7 @@ Keys = {
 	x = 88,
 	l_brack = 91,
 	enter = 257,
+	del = 261,
 	backspace = 259,
 	l_shift = 340,
 	r_shift = 344,
@@ -384,7 +385,7 @@ local function handleKeyNormalMode(key)
 			b.y = y
 			renderStatus()
 			b:renderCursor(term)
-		elseif key == Keys.x then
+		elseif key == Keys.x or key == Keys.del then
 			local line = b.lines[b.y]
 			if #line == 0 then
 				-- noop
