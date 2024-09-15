@@ -28,6 +28,7 @@ Keys = {
 	w = 87,
 	g = 71,
 	d = 68,
+	x = 88,
 	l_brack = 91,
 	enter = 257,
 	backspace = 259,
@@ -62,9 +63,9 @@ function Buffer:new(path)
 		b.lines = { "" }
 	end
 
+	b:setX(1)
 	b.x = 1
 	b.y = 1
-	b.xt = 1
 	b.scrollPos = 1
 	b.mode = "normal"
 	b.search = nil
@@ -122,21 +123,25 @@ function Buffer:up(n)
 	return false
 end
 
+function Buffer:setX(x)
+	self.x = x
+	self.xt = x
+end
+
 function Buffer:left(n)
-	self.x = self.x - n
+	self:setX(self.x - n)
 	if self.x < 1 then
+		self:setX(1)
 		self.x = 1
 	end
-	self.xt = self.x
 end
 
 function Buffer:right(n)
-	self.x = self.x + n
+	self:setX(self.x + n)
 	local line = self.lines[self.y]
 	if self.x > line:len() then
-		self.x = line:len()
+		self:setX(line:len())
 	end
-	self.xt = self.x
 end
 
 function Buffer:renderFull(term)
@@ -379,9 +384,20 @@ local function handleKeyNormalMode(key)
 			b.y = y
 			renderStatus()
 			b:renderCursor(term)
+		elseif key == Keys.x then
+			local line = b.lines[b.y]
+			if #line == 0 then
+				-- noop
+			elseif b.x >= #line then
+				b.lines[b.y] = string.sub(line, 1, b.x - 1)
+				b:setX(b.x - 1)
+			else
+				b.lines[b.y] = string.sub(line, 1, b.x - 1) .. string.sub(line, b.x + 1)
+			end
+			b:renderLine(term, b.y)
+			b:renderCursor(term)
 		elseif key == Keys._0 then
-			b.x = 1
-			b.xt = 1
+			b:setX(1)
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys._4 and State.shifted then -- $
@@ -399,8 +415,7 @@ local function handleKeyNormalMode(key)
 				end
 				i = i + 1
 			end
-			b.x = i
-			b.xt = i
+			b:setX(i)
 			renderStatus()
 			b:renderCursor(term)
 		end
@@ -432,10 +447,10 @@ local function handleKeyInsertMode(key)
 			local line = b.lines[b.y]
 			if b.x > 4 and string.sub(line, b.x - 4, b.x - 1) == "    " and not string.sub(line, 1, b.x - 1):find("%S") then
 				b.lines[b.y] = string.sub(line, 1, b.x - 5) .. string.sub(line, b.x)
-				b.x = b.x - 4
+				b:setX(b.x - 4)
 			else
 				b.lines[b.y] = string.sub(line, 1, b.x - 2) .. string.sub(line, b.x)
-				b.x = b.x - 1
+				b:setX(b.x - 1)
 			end
 			b:renderLine(term, b.y)
 		elseif b.y > 1 then
@@ -443,13 +458,12 @@ local function handleKeyInsertMode(key)
 			local prevLen = #b.lines[b.y - 1]
 			b.lines[b.y - 1] = b.lines[b.y - 1] .. b.lines[b.y]
 			table.remove(b.lines, b.y)
-			b.x = prevLen + 1
+			b:setX(prevLen + 1)
 			b.y = b.y - 1
 			b:renderFull(term)
 		end
 		b:renderCursor(term)
 	end
-	-- TODO: Handle backspace
 	-- TODO: Handle delete
 end
 

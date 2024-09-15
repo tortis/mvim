@@ -20,6 +20,8 @@
 - [ ] .
 - [ ] /
 - [ ] %
+- [x] x
+- [ ] del
 - [ ] iw
 - [ ] a/i(
 - [ ] a/i[
@@ -27,6 +29,11 @@
 - [ ] f/F
 - [ ] t/T
 - [ ] u/ctrl-R
+
+## Command Mode
+- [ ] :ls
+- [ ] :b
+- [ ] :bd
 
 ## Insert Mode
 
