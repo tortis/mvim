@@ -222,7 +222,7 @@ end
 local function enterCommandMode()
 	State.buffers[State.activeIdx].mode = "command"
 	renderStatus("")
-	term.setCursorPos(3, State.height)
+	term.setCursorPos(4, State.height)
 	State.command = ""
 end
 
@@ -235,6 +235,7 @@ local function enterNormalMode(msg)
 	end
 	renderStatus(msg)
 	term.setCursorPos(b.x, b.y)
+	term.setCursorBlink(true)
 end
 
 local function enterInsertMode()
@@ -242,6 +243,7 @@ local function enterInsertMode()
 	b.mode = "insert"
 	renderStatus("")
 	term.setCursorPos(b.x, b.y)
+	term.setCursorBlink(true)
 end
 
 local function handleKeyNormalModeG(key)
@@ -276,6 +278,18 @@ local function isIdChar(ch)
 	end
 end
 
+local function lineTextStart(line)
+	local i = 1
+	while i < #line do
+		local c = line:sub(i, i)
+		if c ~= " " and c ~= "\t" then
+			break
+		end
+		i = i + 1
+	end
+	return i
+end
+
 local function handleKeyNormalMode(key)
 	if State.g then
 		handleKeyNormalModeG(key)
@@ -283,14 +297,15 @@ local function handleKeyNormalMode(key)
 		local b = ab()
 		if key == Keys.i then
 			if State.shifted then
-				-- move to beginning of text
+				b:setX(lineTextStart(b.lines[b.y]))
 			end
 			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.a then
 			if State.shifted then
-				-- move to end of line
+				b:setX(#b.lines[b.y] + 1)
+			else
+				b:setX(b.x + 1)
 			end
-			b.x = b.x + 1
 			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.semicolon and State.shifted then
 			os.queueEvent("mvim_mode", "command")
@@ -408,15 +423,7 @@ local function handleKeyNormalMode(key)
 			b:renderCursor(term)
 		elseif key == Keys._6 and State.shifted then -- ^
 			local line = b.lines[b.y]
-			local i = 1
-			while i < #line do
-				local c = line:sub(i, i)
-				if c ~= " " and c ~= "\t" then
-					break
-				end
-				i = i + 1
-			end
-			b:setX(i)
+			b:setX(lineTextStart(line))
 			renderStatus()
 			b:renderCursor(term)
 		end
@@ -426,8 +433,16 @@ end
 local function handleKeyInsertMode(key)
 	if key == Keys.c and State.ctrl then
 		os.queueEvent("mvim_mode", "normal")
+		local b = ab()
+		if b.x > 1 then
+			b:setX(b.x - 1)
+		end
 	elseif key == Keys.l_brack and State.ctrl then
 		os.queueEvent("mvim_mode", "normal")
+		local b = ab()
+		if b.x > 1 then
+			b:setX(b.x - 1)
+		end
 	elseif key == Keys.enter then
 		local b = ab()
 		local line = b.lines[b.y]

@@ -7,21 +7,20 @@
 - [x] l
 - [x] G
 - [x] gg
+- [x] w
+- [x] 0/$/^
+- [x] x/del
+- [x] i/I
+- [x] a/A
+- [ ] o/O
 - [ ] cc/C
 - [ ] dd/D
-- [ ] i/I
-- [ ] a/A
-- [ ] o
-- [x] w
 - [ ] b
-- [x] 0/$/^
 - [ ] }/{
 - [ ] repeat
 - [ ] .
 - [ ] /
 - [ ] %
-- [x] x
-- [ ] del
 - [ ] iw
 - [ ] a/i(
 - [ ] a/i[
@@ -53,3 +52,4 @@
 - [ ] Create a datapack (https://github.com/cc-tweaked/datapack-example/tree/dev)
 - [x] track desired x separately from real x position
 - [ ] render tabs as a set number of spaces
+- [ ] bug: cursor not rendering on empty lines
