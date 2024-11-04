@@ -13,14 +13,14 @@
 - [x] i/I
 - [x] a/A
 - [x] o/O
-- [ ] dd/D
-- [ ] d#w
+- [ ] d motions (d, w, j, k, h, l)
+- [ ] D
+- [ ] repeat (num before motion)
 - [ ] yy
 - [ ] p
 - [ ] cc/C
 - [ ] b
 - [ ] }/{
-- [ ] repeat
 - [ ] .
 - [ ] /
 - [ ] %
@@ -31,6 +31,7 @@
 - [ ] f/F
 - [ ] t/T
 - [ ] u/ctrl-R
+- [ ] <space> (adv 1 char)
 
 ## Command Mode
 - [ ] :ls
@@ -42,6 +43,7 @@
 - [x] basic text insertion
 - [ ] arrow key cursor movement
 - [ ] ctrl-w (backspace full word)
+- [ ] tab space insertion
 
 ## Visual Mode
 
@@ -55,6 +57,7 @@
 
 - [x] cursor not rendering on empty lines
 - [ ] delete not removing new line
+- [ ] w motion isn't quite correct when empty lines are encountered
 
 ## Misc
 

@@ -71,12 +71,17 @@ function Buffer:new(path)
 	b.scrollPos = 1
 	b.mode = "normal"
 	b.search = nil
+	b.delMod = false
 
 	return b
 end
 
 function Buffer:xRepos()
 	self.x = math.min(self.xt, math.max(1, #self.lines[self.y]))
+end
+
+function Buffer:xReposImut(y)
+	return math.min(self.xt, math.max(1, #self.lines[y]))
 end
 
 function Buffer:scroll(n)
@@ -158,6 +163,10 @@ function Buffer:renderFull(term)
 	end
 end
 
+function Buffer:screenY()
+	return self.y - (self.scrollPos - 1)
+end
+
 function Buffer:renderCursor(term)
 	local screenY = self.y - (self.scrollPos - 1)
 	term.setCursorPos(self.x, screenY)
@@ -183,7 +192,7 @@ local function updateTermSize()
 	local width, height = term.getSize()
 	State.width = width
 	State.height = height
-	State.bufHeight = height - 1
+	State.bufHeight = height - 1 -- one line reserved for status
 end
 
 local function ab()
@@ -215,9 +224,12 @@ local function renderStatus(text)
 end
 
 local function debugPrint(text)
-	term.setCursorPos(1, State.height - 1)
-	term.clearLine()
+	local b = ab()
+	local origX, origY = term.getCursorPos()
+	b:renderLine(term, b.scrollPos)
+	term.setCursorPos(State.width - #text, 1)
 	term.write(text)
+	term.setCursorPos(origX, origY)
 end
 
 local function enterCommandMode()
@@ -230,7 +242,7 @@ end
 local function enterNormalMode(msg)
 	local b = ab();
 	b.mode = "normal"
-	local lineLen = b.lines[b.y]:len()
+	local lineLen = math.max(1, #b.lines[b.y])
 	if b.x > lineLen then
 		b.x = lineLen
 	end
@@ -296,6 +308,11 @@ local function handleKeyNormalMode(key)
 		handleKeyNormalModeG(key)
 	else
 		local b = ab()
+
+		local isMotion = false
+		local nextX = b.x
+		local nextY = b.y
+
 		if key == Keys.i then
 			if State.shifted then
 				b:setX(lineTextStart(b.lines[b.y]))
@@ -315,7 +332,7 @@ local function handleKeyNormalMode(key)
 				b:renderFull(term)
 				os.queueEvent("mvim_mode", "insert")
 			else
-				table.insert(b.lines, b.y+1, '')
+				table.insert(b.lines, b.y + 1, '')
 				b:down(1)
 				b:setX(1)
 				b:renderFull(term)
@@ -332,25 +349,21 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys.g then
 			State.g = true
 		elseif key == Keys.j then
-			if b:down(1) then
-				b:renderFull(term)
-			end
-			renderStatus()
-			b:renderCursor(term)
+			isMotion = true
+			nextY = math.min(#b.lines, b.y + 1)
+			nextX = b:xReposImut(nextY)
 		elseif key == Keys.k then
-			if b:up(1) then
-				b:renderFull(term)
-			end
-			renderStatus()
-			b:renderCursor(term)
+			isMotion = true
+			nextY = math.max(1, b.y - 1)
+			nextX = b:xReposImut(nextY)
 		elseif key == Keys.h then
-			b:left(1)
-			renderStatus()
-			b:renderCursor(term)
+			isMotion = true
+			nextX = math.max(1, b.x - 1)
+			b.xt = nextX
 		elseif key == Keys.l then
-			b:right(1)
-			renderStatus()
-			b:renderCursor(term)
+			isMotion = true
+			nextX = math.min(math.max(1, #b.lines[nextY]), b.x + 1)
+			b.xt = nextX
 		elseif key == Keys.u and State.ctrl then
 			b:scroll(math.floor(-State.height / 2))
 			b:renderFull(term)
@@ -362,10 +375,9 @@ local function handleKeyNormalMode(key)
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys.w then
-			local x = b.x
-			local y = b.y
-			local l = b.lines[y]
-			local ch = l:sub(x, x)
+			isMotion = true
+			local l = b.lines[nextY]
+			local ch = l:sub(nextX, nextX)
 			local s
 			if isIdChar(ch) then
 				s = "eating_word"
@@ -376,10 +388,10 @@ local function handleKeyNormalMode(key)
 			end
 			while true do
 				if #l == 0 then
-					y = y + 1
+					nextY = nextY + 1
 					break
 				end
-				ch = l:sub(x, x)
+				ch = l:sub(nextX, nextX)
 				if s == "eating_ws" then
 					if not isWhitespace(ch) then
 						break
@@ -398,22 +410,18 @@ local function handleKeyNormalMode(key)
 					end
 				end
 
-				if x >= #l then
-					x = 1
-					y = y + 1
-					if y > #b.lines then
-						y = #b.lines
+				if nextX >= #l then
+					nextX = 1
+					nextY = nextY + 1
+					if nextY > #b.lines then
+						nextY = #b.lines
 						break
 					end
-					l = b.lines[y]
+					l = b.lines[nextY]
 				else
-					x = x + 1
+					nextX = nextX + 1
 				end
 			end
-			b.x = x
-			b.y = y
-			renderStatus()
-			b:renderCursor(term)
 		elseif key == Keys.x or key == Keys.del then
 			local line = b.lines[b.y]
 			if #line == 0 then
@@ -427,17 +435,36 @@ local function handleKeyNormalMode(key)
 			b:renderLine(term, b.y)
 			b:renderCursor(term)
 		elseif key == Keys._0 then
-			b:setX(1)
-			renderStatus()
-			b:renderCursor(term)
+			isMotion = true
+			nextX = 1
+			b.xt = 1
 		elseif key == Keys._4 and State.shifted then -- $
-			b.x = #b.lines[b.y]
+			isMotion = true
+			nextX = #b.lines[b.y]
 			b.xt = 99999999
-			renderStatus()
-			b:renderCursor(term)
 		elseif key == Keys._6 and State.shifted then -- ^
+			isMotion = true
 			local line = b.lines[b.y]
-			b:setX(lineTextStart(line))
+			nextX = lineTextStart(line)
+			b.xt = nextX
+		end
+
+		if isMotion then
+			if b.delMod then
+				-- TODO: Delete text between currnet pos and next pos
+			else
+				b.x = nextX
+				b.y = nextY
+			end
+
+			if b.y < b.scrollPos then
+				b.scrollPos = b.y
+				b:renderFull(term)
+			elseif b.y > (b.scrollPos-1) + State.bufHeight then
+				b.scrollPos = math.max(1, b.y - State.bufHeight + 1)
+				b:renderFull(term)
+			end
+
 			renderStatus()
 			b:renderCursor(term)
 		end
@@ -590,6 +617,7 @@ local function openBuffer(path)
 	table.insert(State.buffers, b)
 	State.activeIdx = #State.buffers
 	b:renderFull(term)
+	term.setCursorPos(b.x, b:screenY())
 	debugPrint(("There are %d buffers open."):format(#State.buffers))
 end
 
