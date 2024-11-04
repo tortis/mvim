@@ -425,11 +425,12 @@ local function handleKeyNormalMode(key)
 				-- noop
 			elseif b.x >= #line then
 				b.lines[b.y] = string.sub(line, 1, b.x - 1)
-				b:setX(b.x - 1)
+				b:setX(math.max(1, b.x - 1))
 			else
 				b.lines[b.y] = string.sub(line, 1, b.x - 1) .. string.sub(line, b.x + 1)
 			end
 			b:renderLine(term, b.y)
+			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys._0 then
 			isMotion = true
