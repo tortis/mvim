@@ -21,9 +21,10 @@ Keys = {
 	o = 89,
 	q = 81,
 	j = 74,
-	k = 75,
 	h = 72,
+	k = 75,
 	l = 76,
+	o = 79,
 	u = 85,
 	w = 87,
 	g = 71,
@@ -75,7 +76,7 @@ function Buffer:new(path)
 end
 
 function Buffer:xRepos()
-	self.x = math.min(self.xt, #self.lines[self.y])
+	self.x = math.min(self.xt, math.max(1, #self.lines[self.y]))
 end
 
 function Buffer:scroll(n)
@@ -307,6 +308,19 @@ local function handleKeyNormalMode(key)
 				b:setX(b.x + 1)
 			end
 			os.queueEvent("mvim_mode", "insert")
+		elseif key == Keys.o then
+			if State.shifted then
+				table.insert(b.lines, b.y, '')
+				b:setX(1)
+				b:renderFull(term)
+				os.queueEvent("mvim_mode", "insert")
+			else
+				table.insert(b.lines, b.y+1, '')
+				b:down(1)
+				b:setX(1)
+				b:renderFull(term)
+				os.queueEvent("mvim_mode", "insert")
+			end
 		elseif key == Keys.semicolon and State.shifted then
 			os.queueEvent("mvim_mode", "command")
 		elseif key == Keys.g and State.shifted then

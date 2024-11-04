@@ -12,9 +12,12 @@
 - [x] x/del
 - [x] i/I
 - [x] a/A
-- [ ] o/O
-- [ ] cc/C
+- [x] o/O
 - [ ] dd/D
+- [ ] d#w
+- [ ] yy
+- [ ] p
+- [ ] cc/C
 - [ ] b
 - [ ] }/{
 - [ ] repeat
@@ -38,6 +41,7 @@
 
 - [x] basic text insertion
 - [ ] arrow key cursor movement
+- [ ] ctrl-w (backspace full word)
 
 ## Visual Mode
 
@@ -45,6 +49,12 @@
 - [ ] d
 - [ ] c
 - [ ] V (line)
+- [ ] y
+
+## Fixes
+
+- [x] cursor not rendering on empty lines
+- [ ] delete not removing new line
 
 ## Misc
 
@@ -52,4 +62,3 @@
 - [ ] Create a datapack (https://github.com/cc-tweaked/datapack-example/tree/dev)
 - [x] track desired x separately from real x position
 - [ ] render tabs as a set number of spaces
-- [ ] bug: cursor not rendering on empty lines
