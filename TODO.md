@@ -34,6 +34,7 @@
 - [ ] <space> (adv 1 char)
 
 ## Command Mode
+- [ ] :w and :wq
 - [ ] :ls
 - [ ] :b
 - [ ] :bd
@@ -41,6 +42,7 @@
 ## Insert Mode
 
 - [x] basic text insertion
+- [x] delete
 - [ ] arrow key cursor movement
 - [ ] ctrl-w (backspace full word)
 - [ ] tab space insertion
@@ -56,7 +58,6 @@
 ## Fixes
 
 - [x] cursor not rendering on empty lines
-- [ ] delete not removing new line
 - [ ] w motion isn't quite correct when empty lines are encountered
 
 ## Misc

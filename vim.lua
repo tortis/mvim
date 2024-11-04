@@ -518,8 +518,23 @@ local function handleKeyInsertMode(key)
 			b:renderFull(term)
 		end
 		b:renderCursor(term)
+	elseif key == Keys.del then
+		local b = ab()
+		local lineLen = #b.lines[b.y]
+		if b.x > lineLen then
+			if #b.lines > b.y then
+				b.lines[b.y] = b.lines[b.y] .. b.lines[b.y+1]
+				table.remove(b.lines, b.y+1)
+				b:renderFull(term)
+				b:renderCursor(term)
+			end
+		else
+			local line = b.lines[b.y]
+			b.lines[b.y] = string.sub(line, 1, b.x - 1) .. string.sub(line, b.x + 1)
+			b:renderLine(term, b.y)
+			b:renderCursor(term)
+		end
 	end
-	-- TODO: Handle delete
 end
 
 local function evalCommand()
