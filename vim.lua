@@ -168,8 +168,7 @@ function Buffer:screenY()
 end
 
 function Buffer:renderCursor(term)
-	local screenY = self.y - (self.scrollPos - 1)
-	term.setCursorPos(self.x, screenY)
+	term.setCursorPos(self.x, self:screenY())
 end
 
 function Buffer:renderLine(term, line)
@@ -247,16 +246,14 @@ local function enterNormalMode(msg)
 		b.x = lineLen
 	end
 	renderStatus(msg)
-	term.setCursorPos(b.x, b.y)
-	term.setCursorBlink(true)
+	b:renderCursor(term)
 end
 
 local function enterInsertMode()
 	local b = ab();
 	b.mode = "insert"
 	renderStatus("")
-	term.setCursorPos(b.x, b.y)
-	term.setCursorBlink(true)
+	b:renderCursor(term)
 end
 
 local function handleKeyNormalModeG(key)
