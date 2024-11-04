@@ -16,7 +16,7 @@
 - [ ] d motions (d, w, j, k, h, l)
 - [ ] D
 - [ ] repeat (num before motion)
-- [ ] yy
+- [ ] y motions (y, w, iw)
 - [ ] p
 - [ ] cc/C
 - [ ] b
