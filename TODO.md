@@ -34,7 +34,7 @@
 - [ ] <space> (adv 1 char)
 
 ## Command Mode
-- [ ] :w and :wq
+- [x] :w and :wq
 - [ ] :ls
 - [ ] :b
 - [ ] :bd

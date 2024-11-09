@@ -54,6 +54,7 @@ function Buffer:new(path)
 	local b = setmetatable({}, { __index = Buffer })
 
 	b.lines = {}
+	b.path = path
 	if path ~= nil then
 		local file = io.open(path)
 		for line in file:lines() do
@@ -181,6 +182,12 @@ function Buffer:renderLine(term, line)
 	term.setCursorPos(1, line - (self.scrollPos - 1))
 	term.clearLine()
 	term.write(self.lines[line])
+end
+
+function Buffer:save()
+	if self.path then
+		io.open(self.path, "w"):write(table.concat(self.lines, "\n"))
+	end
 end
 
 function Buffer:renderSpan(term, start, finish)
@@ -458,7 +465,7 @@ local function handleKeyNormalMode(key)
 			if b.y < b.scrollPos then
 				b.scrollPos = b.y
 				b:renderFull(term)
-			elseif b.y > (b.scrollPos-1) + State.bufHeight then
+			elseif b.y > (b.scrollPos - 1) + State.bufHeight then
 				b.scrollPos = math.max(1, b.y - State.bufHeight + 1)
 				b:renderFull(term)
 			end
@@ -523,8 +530,8 @@ local function handleKeyInsertMode(key)
 		local lineLen = #b.lines[b.y]
 		if b.x > lineLen then
 			if #b.lines > b.y then
-				b.lines[b.y] = b.lines[b.y] .. b.lines[b.y+1]
-				table.remove(b.lines, b.y+1)
+				b.lines[b.y] = b.lines[b.y] .. b.lines[b.y + 1]
+				table.remove(b.lines, b.y + 1)
 				b:renderFull(term)
 				b:renderCursor(term)
 			end
@@ -540,10 +547,18 @@ end
 local function evalCommand()
 	if State.command == "q" then
 		os.queueEvent("terminate")
+	elseif State.command == "w" then
+		ab():save()
+	elseif State.command == "wq" then
+		ab():save()
+		os.queueEvent("terminate")
+		return
 	else
 		os.queueEvent("mvim_mode", "normal", "Not an editor command: " .. State.command)
-		State.command = ""
+		return
 	end
+	State.command = ""
+	os.queueEvent("mvim_mode", "normal")
 end
 
 local function handleKeyCommandMode(key)
