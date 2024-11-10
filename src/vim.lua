@@ -7,6 +7,7 @@ State = {
 	shifted = false,
 	ctrl = false,
 	g = false,
+	d = false,
 	command = ""
 }
 
@@ -75,6 +76,34 @@ function Buffer:new(path)
 	b.delMod = false
 
 	return b
+end
+
+function Buffer:deleteSpan(x1, y1, x2, y2)
+	local startX, startY, endX, endY
+	local reverse = y1 > y2 or (y1 == y2 and x1 > x2)
+	if reverse then
+		startX = x2
+		startY = y2
+		endX = x1
+		endY = y1
+	else
+		startX = x1
+		startY = y1
+		endX = x2
+		endY = y2
+	end
+
+	local keepStart = string.sub(self.lines[startY], 1, startX - 1)
+	local keepEnd = string.sub(self.lines[endY], endX, #self.lines[endY])
+	self.lines[startY] = keepStart .. keepEnd
+	if endY > startY then
+		for i = startY+1,endY do
+			table.remove(self.lines, i)
+		end
+	end
+	if reverse then
+		self.x = math.max(1, self.x - (endX - startX))
+	end
 end
 
 function Buffer:xRepos()
@@ -317,7 +346,11 @@ local function handleKeyNormalMode(key)
 		local nextX = b.x
 		local nextY = b.y
 
-		if key == Keys.i then
+
+		if (key == Keys.c or key == Keys.l_brack) and State.ctrl then
+			State.d = false
+			State.g = false
+		elseif key == Keys.i then
 			if State.shifted then
 				b:setX(lineTextStart(b.lines[b.y]))
 			end
@@ -373,11 +406,23 @@ local function handleKeyNormalMode(key)
 			b:renderFull(term)
 			renderStatus()
 			b:renderCursor(term)
-		elseif key == Keys.d and State.ctrl then
-			b:scroll(math.floor(State.height / 2))
-			b:renderFull(term)
-			renderStatus()
-			b:renderCursor(term)
+		elseif key == Keys.d then
+			if State.ctrl then
+				b:scroll(math.floor(State.height / 2))
+				b:renderFull(term)
+				renderStatus()
+				b:renderCursor(term)
+			else
+				if State.d then
+					table.remove(b.lines, b.y)
+					State.d = false
+					b:renderFull(term)
+					renderStatus()
+					b:renderCursor(term)
+				else
+					State.d = true
+				end
+			end
 		elseif key == Keys.w then
 			isMotion = true
 			local l = b.lines[nextY]
@@ -426,6 +471,7 @@ local function handleKeyNormalMode(key)
 					nextX = nextX + 1
 				end
 			end
+			b.xt = nextX
 		elseif key == Keys.x or key == Keys.del then
 			local line = b.lines[b.y]
 			if #line == 0 then
@@ -455,8 +501,16 @@ local function handleKeyNormalMode(key)
 		end
 
 		if isMotion then
-			if b.delMod then
-				-- TODO: Delete text between currnet pos and next pos
+			if State.d then
+				if y ~= nextY then
+					b:deleteSpan(0, b.y, #b.lines[nextY]+1, nextY)
+				else
+					b:deleteSpan(b.x, b.y, nextX, nextY)
+				end
+				b:deleteSpan(b.x, b.y, nextX, nextY)
+				State.d = false
+				b.xt = b.x
+				b:renderFull(term)
 			else
 				b.x = nextX
 				b.y = nextY
@@ -681,19 +735,6 @@ local function openWelcome()
 	term.setCursorBlink(true)
 	State.buffers = { Buffer:new(nil) }
 	State.activeIdx = 1
-end
-
-local function printTable(t, indent)
-	indent = indent or 0
-	for k, v in pairs(t) do
-		local formatting = string.rep("  ", indent) .. k .. ": "
-		if type(v) == "table" then
-			print(formatting)
-			printTable(v, indent + 1)
-		else
-			print(formatting .. tostring(v))
-		end
-	end
 end
 
 local function main(args)

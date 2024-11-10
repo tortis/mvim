@@ -13,13 +13,14 @@
 - [x] i/I
 - [x] a/A
 - [x] o/O
-- [ ] d motions (d, w, j, k, h, l)
+- [x] d motions (d, w, j, k, h, l)
 - [ ] D
 - [ ] repeat (num before motion)
 - [ ] y motions (y, w, iw)
 - [ ] p
 - [ ] cc/C
 - [ ] b
+- [ ] e
 - [ ] }/{
 - [ ] .
 - [ ] /
