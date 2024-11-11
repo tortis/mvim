@@ -8,7 +8,10 @@ State = {
 	ctrl = false,
 	g = false,
 	d = false,
-	command = ""
+	y = false,
+	command = "",
+	registers = {},
+	debug = "",
 }
 
 Keys = {
@@ -17,20 +20,30 @@ Keys = {
 	_4 = 52,
 	_6 = 54,
 	a = 65,
+	b = 66,
 	c = 67,
-	i = 73,
-	o = 89,
-	q = 81,
-	j = 74,
+	d = 68,
+	e = 69,
+	f = 70,
+	g = 71,
 	h = 72,
+	i = 73,
+	j = 74,
 	k = 75,
 	l = 76,
+	m = 77,
+	n = 78,
 	o = 79,
+	p = 80,
+	q = 81,
+	r = 82,
+	s = 83,
+	t = 84,
 	u = 85,
+	v = 86,
 	w = 87,
-	g = 71,
-	d = 68,
 	x = 88,
+	y = 89,
 	l_brack = 91,
 	enter = 257,
 	del = 261,
@@ -48,6 +61,24 @@ Colors = {
 	green = colors.toBlit(colors.green),
 	yellow = colors.toBlit(colors.yellow),
 }
+
+local function ab()
+	return State.buffers[State.activeIdx]
+end
+
+local function debugPrint(text)
+	State.debug = text
+	ab():renderFull(term)
+end
+
+Span = {}
+function Span:new(x1, y1, x2, y2)
+	local s = setmetatable({}, { __index = Span })
+	s.s = { x = x1, y = y1 }
+	s.e = { x = x2, y = y2 }
+
+	return s
+end
 
 Buffer = {}
 
@@ -70,7 +101,7 @@ function Buffer:new(path)
 	b:setX(1)
 	b.x = 1
 	b.y = 1
-	b.scrollPos = 1
+	b.scrollY = 1
 	b.mode = "normal"
 	b.search = nil
 	b.delMod = false
@@ -78,31 +109,43 @@ function Buffer:new(path)
 	return b
 end
 
-function Buffer:deleteSpan(x1, y1, x2, y2)
-	local startX, startY, endX, endY
-	local reverse = y1 > y2 or (y1 == y2 and x1 > x2)
-	if reverse then
-		startX = x2
-		startY = y2
-		endX = x1
-		endY = y1
-	else
-		startX = x1
-		startY = y1
-		endX = x2
-		endY = y2
+function Buffer:getSpanContent(span)
+	local lines = {
+		string.sub(
+			self.lines[span.s.y],
+			span.s.x,
+			(span.e.y == span.e.y) and span.e.x or #self.lines[span.s.y]
+		)
+	}
+	if span.e.y > span.s.y then
+		for i = span.s.y + 1, span.e.y - 1 do
+			table.insert(lines, self.lines[i])
+		end
+		local last = string.sub(self.lines[span.e.y], 1, span.e.x)
+		table.insert(lines, last)
 	end
 
-	local keepStart = string.sub(self.lines[startY], 1, startX - 1)
-	local keepEnd = string.sub(self.lines[endY], endX, #self.lines[endY])
-	self.lines[startY] = keepStart .. keepEnd
-	if endY > startY then
-		for i = startY+1,endY do
+	return lines
+end
+
+-- mode is "line" or "span"
+function Buffer:deleteSpan(span, mode)
+	State.registers["\""] = { mode = mode, content = self:getSpanContent(span) }
+
+	if mode == "line" then
+		for i = span.e.y, span.s.y, -1 do
 			table.remove(self.lines, i)
 		end
-	end
-	if reverse then
-		self.x = math.max(1, self.x - (endX - startX))
+	else
+		local keepStart = string.sub(self.lines[span.s.y], 1, span.s.x - 1)
+		local keepEnd = string.sub(self.lines[span.e.y], span.e.x + 1, #self.lines[span.e.y])
+		local lineNext = keepStart .. keepEnd
+
+		for i = span.e.y, span.s.y + 1, -1 do
+			table.remove(self.lines, i)
+		end
+
+		self.lines[span.s.y] = lineNext
 	end
 end
 
@@ -115,14 +158,14 @@ function Buffer:xReposImut(y)
 end
 
 function Buffer:scroll(n)
-	self.scrollPos = self.scrollPos + n
+	self.scrollY = self.scrollY + n
 
-	if self.scrollPos + State.bufHeight > #self.lines then
-		self.scrollPos = #self.lines - State.bufHeight + 1
+	if self.scrollY + State.bufHeight > #self.lines then
+		self.scrollY = #self.lines - State.bufHeight + 1
 	end
 
-	if self.scrollPos < 1 then
-		self.scrollPos = 1
+	if self.scrollY < 1 then
+		self.scrollY = 1
 	end
 
 	self.y = self.y + n
@@ -139,8 +182,8 @@ function Buffer:down(n)
 	local didScroll = false
 	if self.y + n <= #self.lines then
 		self.y = self.y + n
-		if self.y >= self.scrollPos + State.height - 1 then
-			self.scrollPos = self.scrollPos + n
+		if self.y >= self.scrollY + State.height - 1 then
+			self.scrollY = self.scrollY + n
 			didScroll = true
 		end
 		self:xRepos()
@@ -151,8 +194,8 @@ end
 function Buffer:up(n)
 	if self.y - n >= 1 then
 		self.y = self.y - n
-		if self.y < self.scrollPos then
-			self.scrollPos = self.y
+		if self.y < self.scrollY then
+			self.scrollY = self.y
 			return true
 		end
 		self:xRepos()
@@ -185,16 +228,20 @@ function Buffer:renderFull(term)
 	term.clear()
 	for i = 1, State.height - 1 do
 		term.setCursorPos(1, i)
-		local lineNum = i + self.scrollPos - 1
+		local lineNum = i + self.scrollY - 1
 		if lineNum > #self.lines then
 			break
 		end
 		term.write(self.lines[lineNum])
 	end
+
+	-- render debug message
+	term.setCursorPos(State.width - #State.debug, 1)
+	term.write(State.debug)
 end
 
 function Buffer:screenY()
-	return self.y - (self.scrollPos - 1)
+	return self.y - (self.scrollY - 1)
 end
 
 function Buffer:renderCursor(term)
@@ -202,15 +249,22 @@ function Buffer:renderCursor(term)
 end
 
 function Buffer:renderLine(term, line)
-	if line < self.scrollPos then
+	if line < self.scrollY then
 		return
 	end
-	if line > self.scrollPos + State.bufHeight then
+	if line > self.scrollY + State.bufHeight then
 		return
 	end
-	term.setCursorPos(1, line - (self.scrollPos - 1))
+	local n = line - (self.scrollY - 1)
+	term.setCursorPos(1, n)
 	term.clearLine()
 	term.write(self.lines[line])
+
+	-- render debug
+	if n == 1 then
+		term.setCursorPos(State.width - #State.debug, 1)
+		term.write(State.debug)
+	end
 end
 
 function Buffer:save()
@@ -228,10 +282,6 @@ local function updateTermSize()
 	State.width = width
 	State.height = height
 	State.bufHeight = height - 1 -- one line reserved for status
-end
-
-local function ab()
-	return State.buffers[State.activeIdx]
 end
 
 local function renderStatus(text)
@@ -253,18 +303,9 @@ local function renderStatus(text)
 	term.write(text or "")
 	if b.mode == "normal" then
 		term.setCursorPos(State.width - 20, State.height)
-		term.write(("%d,%d(%d) %dx%d(%d)"):format(b.y, b.x, b.scrollPos, State.width, State.height,
+		term.write(("%d,%d(%d) %dx%d(%d)"):format(b.y, b.x, b.scrollY, State.width, State.height,
 			State.bufHeight))
 	end
-end
-
-local function debugPrint(text)
-	local b = ab()
-	local origX, origY = term.getCursorPos()
-	b:renderLine(term, b.scrollPos)
-	term.setCursorPos(State.width - #text, 1)
-	term.write(text)
-	term.setCursorPos(origX, origY)
 end
 
 local function enterCommandMode()
@@ -295,7 +336,7 @@ end
 local function handleKeyNormalModeG(key)
 	local b = ab()
 	if key == Keys.g then
-		b.scrollPos = 1
+		b.scrollY = 1
 		b.y = 1
 		b:renderFull(term)
 		renderStatus()
@@ -343,13 +384,15 @@ local function handleKeyNormalMode(key)
 		local b = ab()
 
 		local isMotion = false
+		local isLineMotion = false
 		local nextX = b.x
 		local nextY = b.y
-
+		local motionSpan = nil
 
 		if (key == Keys.c or key == Keys.l_brack) and State.ctrl then
 			State.d = false
 			State.g = false
+			State.y = false
 		elseif key == Keys.i then
 			if State.shifted then
 				b:setX(lineTextStart(b.lines[b.y]))
@@ -379,27 +422,31 @@ local function handleKeyNormalMode(key)
 			os.queueEvent("mvim_mode", "command")
 		elseif key == Keys.g and State.shifted then
 			b.y = #b.lines
-			b.scrollPos = #b.lines - State.bufHeight + 1
+			b.scrollY = #b.lines - State.bufHeight + 1
 			b:renderFull(term)
 			renderStatus()
 			b:renderCursor(term)
 		elseif key == Keys.g then
 			State.g = true
 		elseif key == Keys.j then
-			isMotion = true
+			isMotion, isLineMotion = true, true
 			nextY = math.min(#b.lines, b.y + 1)
 			nextX = b:xReposImut(nextY)
+			motionSpan = Span:new(1, b.y, #b.lines[nextY] + 1, nextY)
 		elseif key == Keys.k then
-			isMotion = true
+			isMotion, isLineMotion = true, true
 			nextY = math.max(1, b.y - 1)
 			nextX = b:xReposImut(nextY)
+			motionSpan = Span:new(1, nextY, #b.lines[b.y] + 1, b.y)
 		elseif key == Keys.h then
 			isMotion = true
 			nextX = math.max(1, b.x - 1)
+			motionSpan = Span:new(b.x - 1, b.y, b.x - 1, b.y)
 			b.xt = nextX
 		elseif key == Keys.l then
 			isMotion = true
 			nextX = math.min(math.max(1, #b.lines[nextY]), b.x + 1)
+			motionSpan = Span:new(b.x, b.y, b.x, b.y)
 			b.xt = nextX
 		elseif key == Keys.u and State.ctrl then
 			b:scroll(math.floor(-State.height / 2))
@@ -412,9 +459,16 @@ local function handleKeyNormalMode(key)
 				b:renderFull(term)
 				renderStatus()
 				b:renderCursor(term)
+			elseif State.shifted then
+				b:deleteSpan(Span:new(b.x, b.y, #b.lines[b.y], b.y), "span")
+				State.d = false
+				b.x = math.max(1, b.x - 1)
+				b:renderLine(term, b.y)
+				renderStatus()
+				b:renderCursor(term)
 			else
 				if State.d then
-					table.remove(b.lines, b.y)
+					b:deleteSpan(Span:new(1, b.y, #b.lines[b.y], b.y), "line")
 					State.d = false
 					b:renderFull(term)
 					renderStatus()
@@ -422,6 +476,42 @@ local function handleKeyNormalMode(key)
 				else
 					State.d = true
 				end
+			end
+		elseif key == Keys.y then
+			if State.y then
+				State.registers["\""] = { mode = "line", content = { b.lines[b.y] } }
+				State.y = false
+			elseif State.shifted then
+				State.registers["\""] = { mode = "span", content = { string.sub(b.lines[b.y], b.x) } }
+				State.y = false
+			else
+				State.y = true
+			end
+		elseif key == Keys.p then
+			local r = State.registers["\""]
+			if r then
+				if r.mode == "line" then
+					for i, line in ipairs(r.content) do
+						table.insert(b.lines, b.y + i, line)
+					end
+					b:down(#r.content)
+				else
+					local front = string.sub(b.lines[b.y], 1, b.x)
+					local back = string.sub(b.lines[b.y], b.x + 1, #b.lines[b.y])
+					if #r.content > 1 then
+						b.lines[b.y] = front .. r.content[1]
+						for i = 2,#r.content do
+							table.insert(b.lines, b.y + i - 1, r.content[i])
+						end
+					else
+						b.lines[b.y] = front .. r.content[1] .. back
+						b.x = b.x + #r.content[1]
+						b.xt = b.x
+					end
+				end
+				b:renderFull(term)
+				renderStatus()
+				b:renderCursor(term)
 			end
 		elseif key == Keys.w then
 			isMotion = true
@@ -471,6 +561,7 @@ local function handleKeyNormalMode(key)
 					nextX = nextX + 1
 				end
 			end
+			motionSpan = Span:new(b.x, b.y, nextX - 1, b.y)
 			b.xt = nextX
 		elseif key == Keys.x or key == Keys.del then
 			local line = b.lines[b.y]
@@ -488,26 +579,28 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys._0 then
 			isMotion = true
 			nextX = 1
+			motionSpan = Span:new(1, b.y, b.x - 1, b.y)
 			b.xt = 1
 		elseif key == Keys._4 and State.shifted then -- $
 			isMotion = true
 			nextX = #b.lines[b.y]
+			motionSpan = Span:new(b.x, b.y, #b.lines[b.y], b.y)
 			b.xt = 99999999
 		elseif key == Keys._6 and State.shifted then -- ^
 			isMotion = true
 			local line = b.lines[b.y]
 			nextX = lineTextStart(line)
+			motionSpan = Span:new(nextX, b.y, b.x - 1, b.y)
 			b.xt = nextX
 		end
 
 		if isMotion then
-			if State.d then
-				if y ~= nextY then
-					b:deleteSpan(0, b.y, #b.lines[nextY]+1, nextY)
-				else
-					b:deleteSpan(b.x, b.y, nextX, nextY)
+			if State.d and motionSpan ~= nil then
+				b:deleteSpan(motionSpan, isLineMotion and "line" or "span")
+				if not isLineMotion then
+					b.x = motionSpan.s.x
 				end
-				b:deleteSpan(b.x, b.y, nextX, nextY)
+				b.y = motionSpan.s.y
 				State.d = false
 				b.xt = b.x
 				b:renderFull(term)
@@ -516,11 +609,11 @@ local function handleKeyNormalMode(key)
 				b.y = nextY
 			end
 
-			if b.y < b.scrollPos then
-				b.scrollPos = b.y
+			if b.y < b.scrollY then
+				b.scrollY = b.y
 				b:renderFull(term)
-			elseif b.y > (b.scrollPos - 1) + State.bufHeight then
-				b.scrollPos = math.max(1, b.y - State.bufHeight + 1)
+			elseif b.y > (b.scrollY - 1) + State.bufHeight then
+				b.scrollY = math.max(1, b.y - State.bufHeight + 1)
 				b:renderFull(term)
 			end
 

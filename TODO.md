@@ -14,11 +14,15 @@
 - [x] a/A
 - [x] o/O
 - [x] d motions (d, w, j, k, h, l)
-- [ ] D
-- [ ] repeat (num before motion)
+- [x] yy
+- [x] Y
 - [ ] y motions (y, w, iw)
-- [ ] p
+- [x] p
+- [ ] P
+- [ ] repeat (num before motion)
+- [ ] c motions
 - [ ] cc/C
+- [x] D
 - [ ] b
 - [ ] e
 - [ ] }/{
