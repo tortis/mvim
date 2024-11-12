@@ -18,7 +18,7 @@
 - [x] Y
 - [ ] y motions (y, w, iw)
 - [x] p
-- [ ] P
+- [x] P
 - [ ] repeat (num before motion)
 - [ ] c motions
 - [ ] cc/C

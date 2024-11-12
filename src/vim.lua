@@ -491,13 +491,20 @@ local function handleKeyNormalMode(key)
 			local r = State.registers["\""]
 			if r then
 				if r.mode == "line" then
+					local start = State.shifted and b.y - 1 or b.y
 					for i, line in ipairs(r.content) do
-						table.insert(b.lines, b.y + i, line)
+						table.insert(b.lines, start + i, line)
 					end
-					b:down(#r.content)
+					if not State.shifted then
+						b:down(#r.content)
+					end
 				else
-					local front = string.sub(b.lines[b.y], 1, b.x)
-					local back = string.sub(b.lines[b.y], b.x + 1, #b.lines[b.y])
+					local front = State.shifted
+						and string.sub(b.lines[b.y], 1, b.x - 1)
+						or string.sub(b.lines[b.y], 1, b.x)
+					local back = State.shifted
+						and string.sub(b.lines[b.y], b.x, #b.lines[b.y])
+						or string.sub(b.lines[b.y], b.x + 1, #b.lines[b.y])
 					if #r.content > 1 then
 						b.lines[b.y] = front .. r.content[1]
 						for i = 2,#r.content do
