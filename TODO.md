@@ -16,20 +16,22 @@
 - [x] d motions (d, w, j, k, h, l)
 - [x] yy
 - [x] Y
-- [ ] y motions (y, w, iw)
+- [x] y motions (w, j, k, h, l)
 - [x] p
 - [x] P
-- [ ] repeat (num before motion)
-- [ ] c motions
-- [ ] cc/C
 - [x] D
+- [ ] cc
+- [ ] C
+- [ ] c motions (
 - [ ] b
 - [ ] e
+- [ ] i/aw motion
+- [ ] repeat (num before motion)
+- [ ] r
 - [ ] }/{
 - [ ] .
 - [ ] /
 - [ ] %
-- [ ] iw
 - [ ] a/i(
 - [ ] a/i[
 - [ ] a/i{

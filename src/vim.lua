@@ -469,6 +469,7 @@ local function handleKeyNormalMode(key)
 			else
 				if State.d then
 					b:deleteSpan(Span:new(1, b.y, #b.lines[b.y], b.y), "line")
+					b:xRepos()
 					State.d = false
 					b:renderFull(term)
 					renderStatus()
@@ -602,8 +603,9 @@ local function handleKeyNormalMode(key)
 		end
 
 		if isMotion then
+			local mode = isLineMotion and "line" or "span"
 			if State.d and motionSpan ~= nil then
-				b:deleteSpan(motionSpan, isLineMotion and "line" or "span")
+				b:deleteSpan(motionSpan, mode)
 				if not isLineMotion then
 					b.x = motionSpan.s.x
 				end
@@ -611,6 +613,9 @@ local function handleKeyNormalMode(key)
 				State.d = false
 				b.xt = b.x
 				b:renderFull(term)
+			elseif State.y and motionSpan ~= nil then
+				State.registers["\""] = { mode = mode, content = b:getSpanContent(motionSpan) }
+				State.y = false
 			else
 				b.x = nextX
 				b.y = nextY
