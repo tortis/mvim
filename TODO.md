@@ -20,9 +20,9 @@
 - [x] p
 - [x] P
 - [x] D
-- [ ] cc
-- [ ] C
-- [ ] c motions (
+- [x] cc
+- [x] C
+- [x] c motions (w, j, k, h, l)
 - [ ] b
 - [ ] e
 - [ ] i/aw motion

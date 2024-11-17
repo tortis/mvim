@@ -9,6 +9,7 @@ State = {
 	g = false,
 	d = false,
 	y = false,
+	c = false,
 	command = "",
 	registers = {},
 	debug = "",
@@ -69,6 +70,10 @@ end
 local function debugPrint(text)
 	State.debug = text
 	ab():renderFull(term)
+end
+
+local function isWhitespace(ch)
+	return ch == " " or ch == "\t" or ch == "\n"
 end
 
 Span = {}
@@ -277,6 +282,10 @@ function Buffer:renderSpan(term, start, finish)
 
 end
 
+function Buffer:getLineWhitespacePrefix(y)
+    return self.lines[y]:match("^%s*")
+end
+
 local function updateTermSize()
 	local width, height = term.getSize()
 	State.width = width
@@ -345,10 +354,6 @@ local function handleKeyNormalModeG(key)
 	State.g = false
 end
 
-local function isWhitespace(ch)
-	return ch == " " or ch == "\t" or ch == "\n"
-end
-
 local function isIdChar(ch)
 	local code = string.byte(ch)
 	if code >= 65 and code <= 90 then
@@ -393,16 +398,18 @@ local function handleKeyNormalMode(key)
 			State.d = false
 			State.g = false
 			State.y = false
+			State.c = false
 		elseif key == Keys.i then
 			if State.shifted then
 				b:setX(lineTextStart(b.lines[b.y]))
 			end
 			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.a then
+			local line = b.lines[b.y]
 			if State.shifted then
-				b:setX(#b.lines[b.y] + 1)
+				b:setX(#line + 1)
 			else
-				b:setX(b.x + 1)
+				b:setX(#line > 0 and b.x + 1 or 1)
 			end
 			os.queueEvent("mvim_mode", "insert")
 		elseif key == Keys.o then
@@ -453,6 +460,28 @@ local function handleKeyNormalMode(key)
 			b:renderFull(term)
 			renderStatus()
 			b:renderCursor(term)
+		elseif key == Keys.c then
+			if State.shifted then
+				b:deleteSpan(Span:new(b.x, b.y, #b.lines[b.y], b.y), "span")
+				State.d = false
+				-- b.x = math.max(1, b.x - 1)
+				b:renderLine(term, b.y)
+				renderStatus()
+				b:renderCursor(term)
+				os.queueEvent("mvim_mode", "insert")
+			elseif State.c then
+				local ws = b:getLineWhitespacePrefix(b.y)
+				b:deleteSpan(Span:new(1, b.y, #b.lines[b.y], b.y), "span")
+				b.lines[b.y] = ws
+				b.x = #ws + 1
+				State.c = false
+				b:renderFull(term)
+				renderStatus()
+				b:renderCursor(term)
+				os.queueEvent("mvim_mode", "insert")
+			else
+				State.c = true
+			end
 		elseif key == Keys.d then
 			if State.ctrl then
 				b:scroll(math.floor(State.height / 2))
@@ -610,9 +639,23 @@ local function handleKeyNormalMode(key)
 					b.x = motionSpan.s.x
 				end
 				b.y = motionSpan.s.y
-				State.d = false
 				b.xt = b.x
 				b:renderFull(term)
+				State.d = false
+			elseif State.c and motionSpan ~= nil then
+				local ws = b:getLineWhitespacePrefix(motionSpan.s.y)
+				b:deleteSpan(motionSpan, "span")
+				b.y = motionSpan.s.y
+				if isLineMotion then
+					b.lines[b.y] = ws
+					b.x = #ws + 1
+				else
+					b.x = motionSpan.s.x
+				end
+				b.xt = b.x
+				b:renderFull(term)
+				os.queueEvent("mvim_mode", "insert")
+				State.c = false
 			elseif State.y and motionSpan ~= nil then
 				State.registers["\""] = { mode = mode, content = b:getSpanContent(motionSpan) }
 				State.y = false
