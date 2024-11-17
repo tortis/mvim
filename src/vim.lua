@@ -10,6 +10,8 @@ State = {
 	d = false,
 	y = false,
 	c = false,
+	r = false,
+	nextR = false,
 	command = "",
 	registers = {},
 	debug = "",
@@ -283,7 +285,7 @@ function Buffer:renderSpan(term, start, finish)
 end
 
 function Buffer:getLineWhitespacePrefix(y)
-    return self.lines[y]:match("^%s*")
+	return self.lines[y]:match("^%s*")
 end
 
 local function updateTermSize()
@@ -385,6 +387,10 @@ end
 local function handleKeyNormalMode(key)
 	if State.g then
 		handleKeyNormalModeG(key)
+	elseif State.r then
+		if (key == Keys.c or key == Keys.l_brack) and State.ctrl then
+			State.r = false
+		end
 	else
 		local b = ab()
 
@@ -537,7 +543,7 @@ local function handleKeyNormalMode(key)
 						or string.sub(b.lines[b.y], b.x + 1, #b.lines[b.y])
 					if #r.content > 1 then
 						b.lines[b.y] = front .. r.content[1]
-						for i = 2,#r.content do
+						for i = 2, #r.content do
 							table.insert(b.lines, b.y + i - 1, r.content[i])
 						end
 					else
@@ -550,6 +556,8 @@ local function handleKeyNormalMode(key)
 				renderStatus()
 				b:renderCursor(term)
 			end
+		elseif key == Keys.r then
+			State.nextR = true
 		elseif key == Keys.w then
 			isMotion = true
 			local l = b.lines[nextY]
@@ -812,6 +820,19 @@ local function handleChar(char)
 		b.x = b.x + 1
 		b:renderLine(term, b.y)
 		b:renderCursor(term)
+	elseif b.mode == "normal" then
+		if State.nextR then
+			State.r = true
+			State.nextR = false
+		elseif State.r then
+			local line = b.lines[b.y]
+			if #line > 0 then
+				b.lines[b.y] = line:sub(1, b.x - 1) .. char .. line:sub(b.x + 1)
+			end
+			State.r = false
+			b:renderLine(term, b.y)
+			b:renderCursor(term)
+		end
 	end
 end
 

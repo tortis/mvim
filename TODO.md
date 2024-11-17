@@ -23,11 +23,11 @@
 - [x] cc
 - [x] C
 - [x] c motions (w, j, k, h, l)
+- [x] r
 - [ ] b
 - [ ] e
 - [ ] i/aw motion
 - [ ] repeat (num before motion)
-- [ ] r
 - [ ] }/{
 - [ ] .
 - [ ] /
