@@ -178,11 +178,10 @@ function Buffer:scroll(n)
 	self.y = self.y + n
 	if self.y < 1 then
 		self.y = 1
-		self:xRepos()
 	elseif self.y > #self.lines then
 		self.y = #self.lines
-		self:xRepos()
 	end
+	self:xRepos()
 end
 
 function Buffer:down(n)
@@ -364,6 +363,10 @@ local function isIdChar(ch)
 	end
 	if code >= 97 and code <= 122 then
 		-- lowercase
+		return true
+	end
+	if code >= 48 and code <= 57 then
+		-- numbers
 		return true
 	end
 	if code == 95 then
@@ -580,7 +583,6 @@ local function handleKeyNormalMode(key)
 			end
 			while true do
 				if #l == 0 then
-					nextY = nextY + 1
 					break
 				end
 
@@ -625,6 +627,76 @@ local function handleKeyNormalMode(key)
 					l = b.lines[nextY]
 				else
 					nextX = nextX + 1
+				end
+			end
+			b.xt = nextX
+		elseif key == Keys.b then
+			motionSpan = Span:new(b.x, b.y, math.max(1, b.x -1), b.y)
+			isMotion = true
+			local l = b.lines[nextY]
+			nextX = motionSpan.e.x
+			local ch = l:sub(nextX, nextX)
+			local state
+			if b.x == 1 then
+				nextY = math.max(1, nextY - 1)
+				state = "eating_ws"
+				l = b.lines[nextY]
+				if b.y == 1 then
+					nextX = 1
+				else
+					nextX = math.max(1, #l)
+				end
+				motionSpan.s.x = nextX
+				motionSpan.s.y = nextY
+				if #b.lines[b.y] > 0 then
+					motionSpan.e.x = nextX
+					motionSpan.e.y = nextY
+				end
+			elseif isIdChar(ch) then
+				state = "eating_word"
+			elseif isWhitespace(ch) then
+				state = "eating_ws"
+			else
+				state = "eating_symbols"
+			end
+
+			while true do
+				if #l == 0 then
+					break
+				end
+
+				ch = l:sub(nextX, nextX)
+
+				if state == "eating_ws" then
+					if not isWhitespace(ch) then
+						if isIdChar(ch) then
+							state = "eating_word"
+						else
+							state = "eating_symbols"
+						end
+					end
+				elseif state == "eating_word" then
+					if nextX == 0 or not isIdChar(ch) then
+						nextX = nextX + 1
+						motionSpan.s.x = nextX
+						break
+					end
+				else
+					if nextX == 0 or isWhitespace(ch) or isIdChar(ch) then
+						nextX = nextX + 1
+						motionSpan.s.x = nextX
+						break
+					end
+				end
+
+				nextX = nextX - 1
+				if nextX == 0 then
+					if state == "eating_ws" and nextY > 1 then
+						nextY = nextY - 1
+						l = b.lines[nextY]
+						nextX = math.max(1, #l)
+						motionSpan.s.y = nextY
+					end
 				end
 			end
 			b.xt = nextX

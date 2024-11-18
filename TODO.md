@@ -24,7 +24,7 @@
 - [x] C
 - [x] c motions (w, j, k, h, l)
 - [x] r
-- [ ] b
+- [x] b
 - [ ] e
 - [ ] i/aw motion
 - [ ] repeat (num before motion)
@@ -65,7 +65,7 @@
 ## Fixes
 
 - [x] cursor not rendering on empty lines
-- [ ] w motion isn't quite correct when empty lines are encountered
+- [x] w motion isn't quite correct when empty lines are encountered
 
 ## Misc
 
