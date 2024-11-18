@@ -559,37 +559,58 @@ local function handleKeyNormalMode(key)
 		elseif key == Keys.r then
 			State.nextR = true
 		elseif key == Keys.w then
+			motionSpan = Span:new(b.x, b.y, b.x, b.y)
 			isMotion = true
+			local includeTail = State.d and true or false
 			local l = b.lines[nextY]
 			local ch = l:sub(nextX, nextX)
-			local s
-			if isIdChar(ch) then
-				s = "eating_word"
+			local state
+			if ch == "" then
+				nextY = nextY + 1
+				state = "eating_ws"
+				l = b.lines[nextY]
+				includeTail = false
+				isLineMotion = true
+			elseif isIdChar(ch) then
+				state = "eating_word"
 			elseif isWhitespace(ch) then
-				s = "eating_ws"
+				state = "eating_ws"
 			else
-				s = "eating_symbols"
+				state = "eating_symbols"
 			end
 			while true do
 				if #l == 0 then
 					nextY = nextY + 1
 					break
 				end
+
 				ch = l:sub(nextX, nextX)
-				if s == "eating_ws" then
+				if state == "eating_ws" then
 					if not isWhitespace(ch) then
+						motionSpan.e.x = nextX-1
 						break
 					end
-				elseif s == "eating_word" then
+				elseif state == "eating_tail" then
+					if not isWhitespace(ch) then
+						if includeTail then
+							motionSpan.e.x = nextX-1
+						end
+						break
+					end
+				elseif state == "eating_word" then
 					if isWhitespace(ch) then
-						s = "eating_ws"
+						motionSpan.e.x = nextX-1
+						state = "eating_tail"
 					elseif not isIdChar(ch) then
+						motionSpan.e.x = nextX-1
 						break
 					end
 				else
 					if isWhitespace(ch) then
-						s = "eating_ws"
+						motionSpan.e.x = nextX-1
+						state = "eating_tail"
 					elseif isIdChar(ch) then
+						motionSpan.e.x = nextX-1
 						break
 					end
 				end
@@ -606,7 +627,6 @@ local function handleKeyNormalMode(key)
 					nextX = nextX + 1
 				end
 			end
-			motionSpan = Span:new(b.x, b.y, nextX - 1, b.y)
 			b.xt = nextX
 		elseif key == Keys.x or key == Keys.del then
 			local line = b.lines[b.y]
@@ -645,6 +665,8 @@ local function handleKeyNormalMode(key)
 				b:deleteSpan(motionSpan, mode)
 				if not isLineMotion then
 					b.x = motionSpan.s.x
+				else
+					b.x = math.min(#b.lines[b.y], nextX)
 				end
 				b.y = motionSpan.s.y
 				b.xt = b.x
